@@ -1,0 +1,35 @@
+def get_neighbors(state):
+    """
+    현재 퍼즐 상태 state(길이 9 튜플)에서,
+    '9'(빈칸 역할)를 상/하/좌/우로 이동하여 얻을 수 있는 다음 상태들을 반환.
+    """
+    neighbors = []
+    # state를 리스트로 만들어야 swap하기 쉬움
+    s_list = list(state)
+    blank_idx = s_list.index(9)
+    r, c = divmod(blank_idx, 3)  # 3x3에서 행, 열 구하기
+
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    for dr, dc in directions:
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < 3 and 0 <= nc < 3:
+            new_idx = nr * 3 + nc
+            new_list = s_list[:]
+            # 빈칸(9)과 이동할 칸을 스왑
+            new_list[blank_idx], new_list[new_idx] = new_list[new_idx], new_list[blank_idx]
+            neighbors.append(tuple(new_list))
+
+    return neighbors
+
+def reconstruct_path(came_from, current):
+    """
+    start에서 current까지의 경로를 came_from 정보를 바탕으로 복원.
+    """
+    path = [current]
+    while current in came_from:
+        current = came_from[current]
+        path.append(current)
+    path.reverse()
+    return path
+
+

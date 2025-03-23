@@ -1,0 +1,120 @@
+import heapq
+
+def manhattan_distance(state, goal):
+    """
+    맨해튼 거리(Manhattan Distance)를 계산하는 휴리스틱 함수.
+    state, goal은 각각 길이 9인 튜플/리스트.
+    여기서 9는 빈칸(이동 가능 칸)으로 간주하므로 휴리스틱 계산에서 제외.
+    """
+    dist = 0
+    for i in range(9):
+        if state[i] == 9:
+            continue  # 빈칸(9)은 휴리스틱 계산에서 제외
+        # state[i]의 정답 위치(goal에서의 인덱스)를 찾는다.
+        correct_idx = goal.index(state[i])
+        # 현재 i 위치와 correct_idx 위치의 2D 좌표(행,열) 차이를 더한다.
+        dist += abs((i // 3) - (correct_idx // 3)) + abs((i % 3) - (correct_idx % 3))
+    return dist
+
+def get_neighbors(state):
+    """
+    현재 상태 state에서, '빈칸(9)'을 상하좌우로 움직여서 만들 수 있는
+    이웃 상태들을 반환한다.
+    """
+    neighbors = []
+    # state를 리스트로 만들어야 swap하기 쉬움
+    state_list = list(state)
+    
+    # 빈칸(9)의 인덱스를 찾는다.
+    blank_idx = state_list.index(9)
+    # 빈칸의 (행, 열) 좌표
+    r, c = divmod(blank_idx, 3)
+
+    # 이동 가능한 네 방향 정의 (상하좌우)
+    directions = [(-1,0), (1,0), (0,-1), (0,1)]
+    for dr, dc in directions:
+        nr, nc = r + dr, c + dc
+        # 3x3 범위 내에 있는지 확인
+        if 0 <= nr < 3 and 0 <= nc < 3:
+            # 새 인덱스
+            new_idx = nr * 3 + nc
+            # 빈칸과 target 위치의 값을 스왑
+            new_list = state_list[:]
+            new_list[blank_idx], new_list[new_idx] = new_list[new_idx], new_list[blank_idx]
+            neighbors.append(tuple(new_list))
+    
+    return neighbors
+
+def reconstruct_path(came_from, current):
+    """
+    A* 알고리즘 탐색이 끝난 뒤, 시작 상태부터 current(목표 상태)까지의
+    경로를 복원한다.
+    """
+    path = [current]
+    while current in came_from:
+        current = came_from[current]
+        path.append(current)
+    path.reverse()
+    return path
+
+def a_star(start, goal):
+    """
+    A* 알고리즘으로 start 상태에서 goal 상태까지의 경로를 찾는다.
+    start, goal은 길이 9인 튜플(혹은 리스트).
+    반환값: start에서 goal까지의 상태 리스트(경로).
+    """
+    # 우선순위 큐 (f값이 작은 순으로 추출)
+    open_set = []
+    # g: 시작 노드로부터 비용(이동 횟수)
+    g_score = {start: 0}
+    # f: f(n) = g(n) + h(n)
+    f_score = {start: manhattan_distance(start, goal)}
+
+    # 경로 복원을 위한 사전: came_from[자식] = 부모
+    came_from = {}
+
+    # 힙에 (우선순위, 상태) 형태로 삽입
+    heapq.heappush(open_set, (f_score[start], start))
+
+    while open_set:
+        # f값이 가장 작은 상태를 꺼낸다
+        _, current = heapq.heappop(open_set)
+        
+        # goal 상태에 도달하면 경로 반환
+        if current == goal:
+            return reconstruct_path(came_from, current)
+        
+        # 이웃 상태들을 확인
+        for neighbor in get_neighbors(current):
+            tentative_g = g_score[current] + 1  # 한 번 이동할 때마다 +1
+            # 아직 g_score가 없거나 더 작은 g_score를 발견했다면 갱신
+            if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g
+                f_score[neighbor] = tentative_g + manhattan_distance(neighbor, goal)
+                
+                # 우선순위 큐에도 갱신 내용 반영
+                # (동일 neighbor가 여러 번 들어갈 수 있으나, 꺼내면서 더 큰 f값은 무시)
+                heapq.heappush(open_set, (f_score[neighbor], neighbor))
+
+    # goal을 찾지 못하면 None 반환
+    return None
+
+if __name__ == "__main__":
+    # 목표 상태(1~8은 제자리, '9'는 빈칸)
+    goal_state = (1, 2, 3,
+                  4, 5, 6,
+                  7, 8, 9)
+    
+    # 예시로 섞어본 시작 상태(빈칸: 9)
+    start_state = (1, 2, 3,
+                   5, 4, 6,
+                   7, 9, 8)
+    
+    path = a_star(start_state, goal_state)
+    if path is None:
+        print("해결 불가능한 퍼즐 상태입니다.")
+    else:
+        print("찾은 경로 (총 {}단계):".format(len(path) - 1))
+        for step, state in enumerate(path):
+            print(f"단계 {step}: {state[0:3]}\n       {state[3:6]}\n       {state[6:9]}\n")
